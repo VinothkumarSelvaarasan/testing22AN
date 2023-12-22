@@ -1,15 +1,5 @@
 package com.wecp.entities;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Transient;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
@@ -32,19 +22,19 @@ public class UserTransaction {
 	    @GeneratedValue(strategy = GenerationType.IDENTITY)
 	 Long id;
 	 
-	// @JsonIgnore
+	
 	 @Transient
 	 String userId;
-	 
+	 @JsonIgnore
 	 Double balance;
 	 
 	 Double transactionAmount;
 	 
 	 String transactionType = "CREDIT"; //or "DEBIT"
 	 
-	 /**
-	  * @todo Assign a Many to One relationship with User entity with u_id as a join column name
-	  */
+	 @ManyToOne(fetch = FetchType.EAGER, optional = false)
+	  @JoinColumn(name = "u_id", nullable = false)
+	  @OnDelete(action = OnDeleteAction.CASCADE)
 	  @JsonIgnore
 	 User user;
   

@@ -1,6 +1,10 @@
 package com.wecp.controller;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -9,17 +13,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+
 import com.wecp.entities.User;
 import com.wecp.repos.UserRepository;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
 
 @RestController
-
-//@CrossOrigin("*")
+//@CrossOrigin()
 public class UserController {
 	
 	@Autowired
@@ -30,34 +29,31 @@ public class UserController {
 	public ResponseEntity<?> saveUser(@RequestBody User user)
 			throws Exception {
 
-		/**
-		 * @todo Perform mandatory validations on the incoming attributes of the User object passed.
-		 */
-
-		/**
-		 * @todo make sure the user is created if the userId doesn't exist
-		 * @todo make sure teh user is updated if the user id passed do exists
-		 * 		
-		 */
-		User usr = null;
+		Objects.requireNonNull(user);
+		Objects.requireNonNull(user.getUserId());
+		Objects.requireNonNull(user.getPassword());
+		User usr = repository.findByUserId(user.getUserId());
 			if(usr == null) {
-				
-			}else {
-				usr.setPassword(user.getPassword());			
+				repository.save(user);
 			}
-		Map<String, String> data = new HashMap<>();
-		data.put("success", "User added successfully");
-		return new ResponseEntity<>(data, null);
+			else {
+				usr.setPassword(user.getPassword());
+				usr.setRole(user.getRole());
+				repository.save(usr);
+			}
+		Map<String, String> body = new HashMap<>();
+		body.put("message", "User added successfully");
+		return ResponseEntity.ok(body);
+
 	}
-	/**
-	 * @todo Add the appropriate RequestMapping & PreAuthorize annotations
-	 */
-	public ResponseEntity<?> getAllUsers()
+	
+	@RequestMapping(value = "/fetchusers", method = RequestMethod.GET)
+	@PreAuthorize("hasRole('ADMIN')")
+	public ResponseEntity<?> fetchusers()
 			throws Exception {
 
-		List<User> users = repository.findAll();
-
-		return ResponseEntity.ok(null);
+		List<User> users =  repository.findAll();
+		return ResponseEntity.ok(users);
 	}
 
 }
