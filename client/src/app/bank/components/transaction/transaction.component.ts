@@ -5,6 +5,8 @@ import { AuthService } from "src/app/auth/services/auth.service";
 import { User } from "src/app/auth/types/user";
 import { TransactionService } from "../../services/transaction.service";
 import { Transaction } from "../../types/transaction";
+import { ActivatedRoute, Router } from '@angular/router';
+
 
 @Component({
   selector: "app-transaction",
@@ -18,37 +20,80 @@ export class TransactionComponent implements OnInit {
   transactionSuccess$: Observable<string>;
   users$: Observable<User[]>;
   isFormSubmitted: boolean = false;
+  userId: string;
   outstandingBalance$: Observable<number>;
+  transactions$: Observable<Transaction[]>;
+  outstandBalanceTiDisplay: number;
+
+  errorMessages: { [key: string] : string} = {
+    NOT_ENOUGH_BALANCE: 'Not enough balance to complete transaction'
+  }
 
   constructor(
     private formBuilder: FormBuilder,
     private authService: AuthService,
-    private trnasactionService: TransactionService
-  ) {}
+    private trnasactionService: TransactionService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) {
+    this.route.queryParams.subscribe(params => {
+      if (params.userId) {
+        this.userId = params.userId;
+        this.outstandingBalance$ = this.trnasactionService.getOutstandingBalance(this.userId);
+        this.getAllTransactions();
+      }else {
+        this.router.navigate(["/auth"]);
+      }
+    })
+
+    this.outstandingBalance$.subscribe(res => {
+      this.outstandBalanceTiDisplay = res;
+    })
+    
+  
+  }
 
   ngOnInit(): void {
     this.transactionForm = this.formBuilder.group({
-      user: ["", [Validators.required]],
       amount: ["", ""],
       type: ["", ""],
     });
-
-    // Make sure you check user's outstanding balance and display it in the UI on page load
-    // You will also need to load transaction history, if there are any previous transactions for this user 
- 
+    this.users$ = this.authService
+      .getUsers()
+      .pipe(map((users) => users.filter((u) => u.role === "CLIENT")));
   }
 
   onSubmit() {
     this.isFormSubmitted = true;
-    //@todo:  when a trasaction is submitted make sure relevant fields (transactionAmount, transactionType) are not empty, and make an api call to perform transaction
-    // Once transaction is successfully submitted, update transaction history and outstanding balance for the user 
-    // If the transaction is not successful due to insufficient balance, display the error message as "Not enough balance to complete transaction"
-    // If it is a successful transaction, display the message as "Transaction performed successfully".
+    this.transactionError$ = of('');
+    this.transactionSuccess$ = of('');
+    if (this.transactionForm.invalid) {
+      return;
+    } else {
+      const {  amount, type } = this.transactionForm.value;
+      const transaction: Transaction = {
+        userId: this.userId,
+        transactionAmount: amount,
+        transactionType: type,
+      };
+      this.trnasactionService.performTransaction(transaction).subscribe(
+        (res: any) => {
+          this.transactionSuccess$ = of(res.message);
+          this.trnasactionService.getOutstandingBalance(this.userId).subscribe(res => {
+            this.outstandBalanceTiDisplay = res;
+            this.getAllTransactions();
+          });
+         
+        },
+        ({error}) => {
+          this.transactionError$ = of(this.errorMessages[error.message]);
+        }
+      );
+    }
   }
 
-  // Use this method fetch transaction history of a particular user
   getAllTransactions() {
-    
+    this.transactions$ = this.trnasactionService.getAllTranactions(this.userId);
 
   }
 }
